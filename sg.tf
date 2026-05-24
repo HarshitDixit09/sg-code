@@ -1,4 +1,4 @@
-#No-op-committt
+#No-op-commit
 provider "aws" {
   region = "ap-south-1" # change as needed
 }
