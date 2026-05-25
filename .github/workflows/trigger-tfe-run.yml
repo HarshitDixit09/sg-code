@@ -1,0 +1,43 @@
+name: Terraform Enterprise Pipeline
+
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+
+  trigger-tfe-run:
+
+    name: Trigger Terraform Enterprise Run
+
+    runs-on: ubuntu-latest
+
+    steps:
+
+      - name: Trigger TFE Run
+        run: |
+
+          response=$(curl --silent \
+            --header "Authorization: Bearer ${{ secrets.TFE_TOKEN }}" \
+            --header "Content-Type: application/vnd.api+json" \
+            --request POST \
+            --data '{
+              "data": {
+                "attributes": {
+                  "message": "Triggered from GitHub Actions"
+                },
+                "type":"runs",
+                "relationships": {
+                  "workspace": {
+                    "data": {
+                      "type": "workspaces",
+                      "id": "'"${{ secrets.TFE_WORKSPACE_ID }}"'"
+                    }
+                  }
+                }
+              }
+            }' \
+            https://${{ secrets.TFE_HOSTNAME }}/api/v2/runs)
+
+          echo "$response"
