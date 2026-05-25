@@ -1,3 +1,5 @@
+#For vcs driven workspace -> diasble vcs trigers in the workspace -> do commit in the repo -->it will trigger plan -> approve the plan -> apply 
+#using the run API to trigger run and apply run 
 name: Terraform Enterprise Immutable Pipeline
 
 on:
