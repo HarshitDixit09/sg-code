@@ -1,0 +1,36 @@
+name: Terraform Enterprise Destroy
+
+on:
+  workflow_dispatch:
+
+jobs:
+
+  terraform-destroy:
+
+    runs-on: ubuntu-latest
+
+    environment:
+      name: production
+
+    steps:
+
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v3
+
+      - name: Terraform Login
+        run: |
+
+          cat > ~/.terraformrc <<EOF
+          credentials "harshit-eks-fdo.tf-support.hashicorpdemo.com" {
+            token = "${{ secrets.TF_API_TOKEN }}"
+          }
+          EOF
+
+      - name: Terraform Init
+        run: terraform init
+
+      - name: Terraform Destroy
+        run: terraform destroy -auto-approve
