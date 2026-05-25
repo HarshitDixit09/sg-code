@@ -76,7 +76,7 @@ jobs:
 
             echo "Current Run Status: $status"
 
-            if [[ "$status" == "planned_and_finished" || "$status" == "policy_checked" || "$status" == "planned_and_saved" ]]; then
+            if [[ "$status" == "planned" || "$status" == "policy_checked" || "$status" == "planned_and_saved" ]]; then
               echo "Plan completed successfully"
               break
             fi
