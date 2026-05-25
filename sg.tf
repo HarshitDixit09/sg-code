@@ -1,4 +1,4 @@
-#No-op-committt
+#No-op-commit
 
 terraform {
   cloud {
