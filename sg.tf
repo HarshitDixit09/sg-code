@@ -1,4 +1,18 @@
 #No-op-commit
+
+terraform {
+  cloud {
+
+    hostname = "harshit-eks-fdo.tf-support.hashicorpdemo.com"
+
+    organization = "Harshit"
+
+    workspaces {
+      name = "api-workflow"
+    }
+  }
+}
+
 provider "aws" {
   region = "ap-south-1" # change as needed
 }
