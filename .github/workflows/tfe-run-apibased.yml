@@ -81,7 +81,7 @@ jobs:
 
             status=$(echo "$response" | jq -r '.data.attributes.status')
 
-            confirmable=$(echo "$response" | jq -r '.data.attributes.actions.is-confirmable')
+            confirmable=$(echo "$response" | jq -r '.data.attributes.actions["is-confirmable"]')
 
             echo "Current Run Status: $status"
             echo "Is Confirmable: $confirmable"
