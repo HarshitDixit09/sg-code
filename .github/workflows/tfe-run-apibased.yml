@@ -22,7 +22,7 @@ jobs:
         id: create_run
         run: |
 
-          echo "Creating TFE Run"
+          echo "Creating TFE Run..."
 
           response=$(curl --silent --show-error \
             --request POST \
@@ -49,25 +49,28 @@ jobs:
           EOF
           )
 
-          echo "FULL RESPONSE:"
+          echo "FULL API RESPONSE:"
           echo "$response"
 
           run_id=$(echo "$response" | jq -r '.data.id')
 
           echo "RUN ID: $run_id"
 
-          if [[ "$run_id" == "null" || -z "$run_id" ]]; then
-            echo "Failed to create TFE run"
+          if [[ -z "$run_id" || "$run_id" == "null" ]]; then
+            echo "Failed to create run"
             exit 1
           fi
 
           echo "run_id=$run_id" >> $GITHUB_OUTPUT
 
 
+
       - name: Wait For Plan Completion
         run: |
 
           run_id="${{ steps.create_run.outputs.run_id }}"
+
+          echo "Waiting for TFE plan completion..."
 
           while true
           do
@@ -76,20 +79,21 @@ jobs:
               --header "Authorization: Bearer ${{ secrets.TFE_TOKEN }}" \
               https://${{ secrets.TFE_HOSTNAME }}/api/v2/runs/$run_id)
 
-            echo "$response"
-
             status=$(echo "$response" | jq -r '.data.attributes.status')
 
+            confirmable=$(echo "$response" | jq -r '.data.attributes.actions.is-confirmable')
+
             echo "Current Run Status: $status"
+            echo "Is Confirmable: $confirmable"
+
+            if [[ "$confirmable" == "true" ]]; then
+              echo "Plan completed successfully"
+              break
+            fi
 
             case "$status" in
 
-              planned|planned_and_finished|planned_and_saved|policy_checked)
-                echo "Plan completed successfully"
-                break
-                ;;
-
-              errored|canceled)
+              errored|canceled|discarded)
                 echo "Run failed"
                 exit 1
                 ;;
@@ -101,13 +105,19 @@ jobs:
           done
 
 
+
       - name: Print TFE Run URL
         run: |
 
           run_id="${{ steps.create_run.outputs.run_id }}"
 
-          echo "TFE Run URL:"
+          echo ""
+          echo "========================================"
+          echo "TFE RUN READY FOR APPROVAL"
+          echo "========================================"
+          echo ""
           echo "https://${{ secrets.TFE_HOSTNAME }}/app/runs/$run_id"
+          echo ""
 
 
 
@@ -139,3 +149,56 @@ jobs:
 
           echo "APPLY RESPONSE:"
           echo "$response"
+
+
+
+      - name: Wait For Apply Completion
+        run: |
+
+          run_id="${{ needs.terraform-plan.outputs.run_id }}"
+
+          echo "Waiting for apply completion..."
+
+          while true
+          do
+
+            response=$(curl --silent \
+              --header "Authorization: Bearer ${{ secrets.TFE_TOKEN }}" \
+              https://${{ secrets.TFE_HOSTNAME }}/api/v2/runs/$run_id)
+
+            status=$(echo "$response" | jq -r '.data.attributes.status')
+
+            echo "Current Run Status: $status"
+
+            case "$status" in
+
+              applied)
+                echo "Apply completed successfully"
+                break
+                ;;
+
+              errored|canceled|discarded)
+                echo "Apply failed"
+                exit 1
+                ;;
+
+            esac
+
+            sleep 15
+
+          done
+
+
+
+      - name: Print Final Run URL
+        run: |
+
+          run_id="${{ needs.terraform-plan.outputs.run_id }}"
+
+          echo ""
+          echo "========================================"
+          echo "TFE APPLY COMPLETED"
+          echo "========================================"
+          echo ""
+          echo "https://${{ secrets.TFE_HOSTNAME }}/app/runs/$run_id"
+          echo ""
