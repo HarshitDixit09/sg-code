@@ -1,4 +1,4 @@
-name: Terraform Enterprise Pipeline
+name: Terraform Enterprise Remote Run
 
 on:
   push:
@@ -7,37 +7,72 @@ on:
 
 jobs:
 
-  trigger-tfe-run:
-
-    name: Trigger Terraform Enterprise Run
+  terraform-plan:
 
     runs-on: ubuntu-latest
 
+    outputs:
+      run_id: ${{ steps.capture.outputs.run_id }}
+
     steps:
 
-      - name: Trigger TFE Run
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v3
+
+      - name: Terraform Login
         run: |
 
-          response=$(curl --silent \
-            --header "Authorization: Bearer ${{ secrets.TFE_TOKEN }}" \
-            --header "Content-Type: application/vnd.api+json" \
-            --request POST \
-            --data '{
-              "data": {
-                "attributes": {
-                  "message": "Triggered from GitHub Actions"
-                },
-                "type":"runs",
-                "relationships": {
-                  "workspace": {
-                    "data": {
-                      "type": "workspaces",
-                      "id": "'"${{ secrets.TFE_WORKSPACE_ID }}"'"
-                    }
-                  }
-                }
-              }
-            }' \
-            https://${{ secrets.TFE_HOSTNAME }}/api/v2/runs)
+          cat > ~/.terraformrc <<EOF
+          credentials "harshit-eks-fdo.tf-support.hashicorpdemo.com" {
+            token = "${{ secrets.TF_API_TOKEN }}"
+          }
+          EOF
 
-          echo "$response"
+      - name: Terraform Init
+        run: terraform init
+
+      - name: Terraform Plan
+        run: terraform plan -out=tfplan
+
+      - name: Capture Run ID
+        id: capture
+        run: |
+
+          run_url=$(grep -o 'https://[^ ]*/runs/run-[a-zA-Z0-9]*' <<< "$(terraform show tfplan || true)" | head -1)
+
+          echo "run_url=$run_url"
+
+  terraform-apply:
+
+    needs: terraform-plan
+
+    runs-on: ubuntu-latest
+
+    environment:
+      name: production
+
+    steps:
+
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v3
+
+      - name: Terraform Login
+        run: |
+
+          cat > ~/.terraformrc <<EOF
+          credentials "harshit-eks-fdo.tf-support.hashicorpdemo.com" {
+            token = "${{ secrets.TF_API_TOKEN }}"
+          }
+          EOF
+
+      - name: Terraform Init
+        run: terraform init
+
+      - name: Terraform Apply
+        run: terraform apply -auto-approve
